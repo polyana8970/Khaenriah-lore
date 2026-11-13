@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лор Каэнри'ах</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏰 Каэнри'ах</h1>
+            <p>Древнее королевство без богов. Задай вопрос о его лоре.</p>
+        </header>
+
+        <div class="chat-container">
+            <div id="chat-box" class="chat-box">
+                <div class="message bot-message">
+                    Привет! Я помогу тебе узнать больше о Каэнри'ах. Задай мне любой вопрос!
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="question" placeholder="Например: Кто такой Дайнслейф?" />
+                <button onclick="askQuestion()">Отправить</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Думаю...
+        </div>
+    </div>
+
+    <script>
+        function askQuestion() {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value.trim();
+            
+            if (!question) return;
+
+            // Добавляем вопрос пользователя
+            addMessage(question, 'user-message');
+            questionInput.value = '';
+
+            // Показываем загрузку
+            document.getElementById('loading').style.display = 'block';
+
+            // Отправляем запрос
+            fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: question })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.error) {
+                    addMessage('Ошибка: ' + data.error, 'bot-message');
+                } else {
+                    addMessage(data.answer, 'bot-message');
+                    
+                    // Показываем источники
+                    if (data.sources && data.sources.length > 0) {
+                        let sourcesText = '📚 Источники:\n';
+                        data.sources.forEach((source, index) => {
+                            // Вот здесь нужны обратные кавычки  
+                            sourcesText += (index + 1) + '. ' + source + '\n\n';
+                        });
+                        addMessage(sourcesText, 'source-message');
+                    }
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                addMessage('Произошла ошибка: ' + error, 'bot-message');
+            });
+        }
+
+        function addMessage(text, className) {
+            const chatBox = document.getElementById('chat-box');
+            const messageDiv = document.createElement('div');
+            // И вот здесь тоже
+            messageDiv.className = 'message ' + className;
+            messageDiv.textContent = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Отправка по Enter
+        document.getElementById('question').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
