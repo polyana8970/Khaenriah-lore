@@ -7,93 +7,149 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <!-- Сюда JavaScript добавит парящие звёзды -->
+    <div id="stars"></div>
+
     <div class="container">
         <header>
-            <h1>🏰 Каэнри'ах</h1>
+            <div class="emblem">✦</div>
+            <h1>КАЭНРИ'АХ</h1>
             <p>Древнее королевство без богов. Задай вопрос о его лоре.</p>
+            <div class="header-line"></div>
         </header>
+
+        <!-- Кнопки быстрых вопросов -->
+        <div class="quick-questions">
+            <button class="chip" onclick="askQuick(this)">Кто такой Дайнслейф?</button>
+            <button class="chip" onclick="askQuick(this)">Что такое династия Алой Луны?</button>
+            <button class="chip" onclick="askQuick(this)">Кто такие пять Грешников?</button>
+            <button class="chip" onclick="askQuick(this)">Что такое интейват?</button>
+        </div>
 
         <div class="chat-container">
             <div id="chat-box" class="chat-box">
                 <div class="message bot-message">
-                    Привет! Я помогу тебе узнать больше о Каэнри'ах. Задай мне любой вопрос!
+                    <span class="avatar">✦</span>
+                    <div class="message-text">Привет! Я хранитель архивов Каэнри'ах. Спроси меня о чём угодно — от династий королей до руинных механизмов!</div>
                 </div>
             </div>
 
             <div class="input-area">
-                <input type="text" id="question" placeholder="Например: Кто такой Дайнслейф?" />
+                <input type="text" id="question" placeholder="Например: кто такой Хальфдан?" />
                 <button onclick="askQuestion()">Отправить</button>
             </div>
         </div>
 
+        <!-- Анимация загрузки с точками -->
         <div id="loading" class="loading" style="display: none;">
-            Думаю...
+            <div class="dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+            <p>Ищу в архивах королевства...</p>
         </div>
     </div>
 
     <script>
+        // --- Создаём парящие звёзды на фоне ---
+        const starsBox = document.getElementById('stars');
+        for (let i = 0; i < 40; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.textContent = '✦';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.fontSize = (8 + Math.random() * 14) + 'px';
+            star.style.animationDelay = (Math.random() * 5) + 's';
+            starsBox.appendChild(star);
+        }
+
+        // --- Эффект печатающегося текста ---
+        function typeText(element, text) {
+            let i = 0;
+            const timer = setInterval(function () {
+                element.textContent += text[i];
+                i++;
+                const box = document.getElementById('chat-box');
+                box.scrollTop = box.scrollHeight;
+                if (i >= text.length) clearInterval(timer);
+            }, 15);
+        }
+
+        // --- Кнопка быстрого вопроса ---
+        function askQuick(button) {
+            document.getElementById('question').value = button.textContent;
+            askQuestion();
+        }
+
         function askQuestion() {
             const questionInput = document.getElementById('question');
             const question = questionInput.value.trim();
-            
             if (!question) return;
 
-            // Добавляем вопрос пользователя
-            addMessage(question, 'user-message');
+            addMessage(question, 'user-message', false);
             questionInput.value = '';
 
-            // Показываем загрузку
-            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').style.display = 'flex';
 
-            // Отправляем запрос
             fetch('/ask', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question: question })
             })
             .then(response => response.json())
             .then(data => {
                 document.getElementById('loading').style.display = 'none';
-                
                 if (data.error) {
-                    addMessage('Ошибка: ' + data.error, 'bot-message');
+                    addMessage('Ошибка: ' + data.error, 'bot-message', false);
                 } else {
-                    addMessage(data.answer, 'bot-message');
-                    
-                    // Показываем источники
+                    addMessage(data.answer, 'bot-message', true);
                     if (data.sources && data.sources.length > 0) {
                         let sourcesText = '📚 Источники:\n';
-                        data.sources.forEach((source, index) => {
-                            // Вот здесь нужны обратные кавычки  
+                        data.sources.forEach(function (source, index) {
                             sourcesText += (index + 1) + '. ' + source + '\n\n';
                         });
-                        addMessage(sourcesText, 'source-message');
+                        addMessage(sourcesText, 'source-message', false);
                     }
                 }
             })
             .catch(error => {
                 document.getElementById('loading').style.display = 'none';
-                addMessage('Произошла ошибка: ' + error, 'bot-message');
+                addMessage('Произошла ошибка: ' + error, 'bot-message', false);
             });
         }
 
-        function addMessage(text, className) {
+        function addMessage(text, className, withTyping) {
             const chatBox = document.getElementById('chat-box');
             const messageDiv = document.createElement('div');
-            // И вот здесь тоже
             messageDiv.className = 'message ' + className;
-            messageDiv.textContent = text;
+
+            // У ответов бота будет аватарка-звёздочка
+            if (className === 'bot-message') {
+                const avatar = document.createElement('span');
+                avatar.className = 'avatar';
+                avatar.textContent = '✦';
+                messageDiv.appendChild(avatar);
+            }
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text';
+            messageDiv.appendChild(textDiv);
+
             chatBox.appendChild(messageDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            if (withTyping) {
+                typeText(textDiv, text);
+            } else {
+                textDiv.textContent = text;
+            }
         }
 
         // Отправка по Enter
-        document.getElementById('question').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                askQuestion();
-            }
+        document.getElementById('question').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') askQuestion();
         });
     </script>
 </body>
